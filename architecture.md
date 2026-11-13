@@ -94,7 +94,7 @@ All four routes are **statically prerendered** at build time. There are no API r
 | Styling | Tailwind CSS 4.3 + `app/globals.css` | Theme tokens in `@theme inline`; bespoke animations as plain CSS classes. |
 | Animation libraries | `motion` (Framer Motion successor), `gsap` | Dependencies of the vendored React Bits components. |
 | Fonts | `next/font/google`: **Manrope** (text), **JetBrains Mono** (data) | Self-hosted at build time; exposed as `--font-manrope` / `--font-jetbrains`. |
-| Forms | **Web3Forms** (hosted form endpoint) | Called directly from the browser; no backend. |
+| Enquiries | Own route `POST /api/enquiry` → **Supabase** function `submit_enquiry` (the LambTech desk database) | The site's only server code. Web3Forms remains as an optional email copy. |
 | Hosting | **Vercel** | Static output on the CDN; Git-connected. |
 | Lint | ESLint 9 + `eslint-config-next` | `components/reactbits/**` excluded (vendored code). |
 
@@ -110,7 +110,8 @@ Lambtech_website/
 │   ├── page.tsx                  /            Hub page
 │   ├── ca/page.tsx               /ca          CA & tax content + BatchSimulator
 │   ├── realestate/page.tsx       /realestate  Real estate content + TdsCalculator
-│   └── logistics/page.tsx        /logistics   Logistics content + BolAudit
+│   ├── logistics/page.tsx        /logistics   Logistics content + BolAudit
+│   └── api/enquiry/route.ts      POST /api/enquiry  Saves a form submission to the desk database
 │
 ├── components/
 │   ├── Nav.tsx                   Sticky grey header, desktop links + mobile menu
@@ -133,13 +134,15 @@ Lambtech_website/
 │       └── Magnet.tsx  RotatingText.tsx  ShinyText.tsx  SpotlightCard.tsx
 │
 ├── lib/
-│   ├── site.ts                   Site settings (contact details, form key) + vertical list
-│   └── checks.ts                 inr() formatter, ISO 6346 container check
+│   ├── site.ts                   Site settings (contact details, optional form key) + vertical list
+│   ├── checks.ts                 inr() formatter, ISO 6346 container check
+│   ├── enquiry.ts                Enquiry validation, payload and error mapping (pure functions)
+│   └── enquiry.test.mjs          Tests for enquiry.ts (npm test)
 │
 ├── public/logo.png               Logo (512×512), also the favicon
 ├── docs/design-spec.md           Condensed design brief from the master plan
 ├── architecture.md               This document
-├── .env.example                  Template for NEXT_PUBLIC_WEB3FORMS_KEY
+├── .env.example                  Template for the Supabase and intake-secret variables
 ├── next.config.ts  tsconfig.json  eslint.config.mjs  package.json
 └── AGENTS.md                     Next.js 16 notice for coding agents (auto-written by next dev)
 ```
@@ -156,20 +159,23 @@ flowchart LR
         SRC[app/ + components/] --> NB[next build]
         NB --> HTML[Prerendered HTML for / /ca /realestate /logistics]
         NB --> JS[Client JS chunks]
+        NB --> FN[Server function /api/enquiry]
     end
     subgraph Browser
         HTML --> HYD[Hydrate client components]
         JS --> HYD
         HYD --> INT[Widgets, motion, modal]
-        INT -->|Booking submit| W3F[(Web3Forms API)]
     end
     CDN[Vercel CDN] --> HTML
+    INT -->|Booking submit| FN
+    FN -->|submit_enquiry + intake secret| DB[(Supabase: LambTech desk)]
 ```
 
 - **Server Components** (no client JS of their own): route pages (`app/**/page.tsx`), `Vertical.tsx`, `Footer.tsx`.
 - **Client Components** (`"use client"`): `Nav`, `Booking`, `ScrollReset`, `Sections`, `HeroPipeline`, `Timeline`, `motion.tsx`, all `widgets/*`, all `reactbits/*`.
 - Route-to-route navigation is client-side (Next `<Link>`); only changed segments are fetched.
-- The only network call at runtime is the booking form POST to `https://api.web3forms.com/submit`.
+- The pages are static. The one piece of server code is the route handler `app/api/enquiry/route.ts`, which runs on each form submission.
+- Runtime network calls: the browser posts the form to `/api/enquiry` (same origin); that function calls Supabase. If `NEXT_PUBLIC_WEB3FORMS_KEY` is set, the browser also sends a copy to Web3Forms after a successful save.
 
 ---
 
@@ -367,24 +373,32 @@ sequenceDiagram
     participant V as Visitor
     participant B as BookButton
     participant P as BookingProvider
-    participant W as Web3Forms API
+    participant R as /api/enquiry (server)
+    participant D as Supabase submit_enquiry
     V->>B: click CTA
     B->>P: open(topic)
     P->>V: showModal() (topic as title)
-    V->>P: submit Name/Firm + Email/WhatsApp
-    alt NEXT_PUBLIC_WEB3FORMS_KEY missing
-        P->>V: "form isn't connected yet" error
-    else key present
-        P->>W: POST /submit {access_key, subject, name_or_firm, email_or_whatsapp, topic, page}
-        W-->>P: { success }
-        P->>V: success state, or error message (+ mailto link if email is set)
+    V->>P: submit Name/Firm + Email + Phone/WhatsApp
+    P->>R: POST {name, email, phone, topic, page, meta, website}
+    alt variables missing
+        R-->>P: 503 "isn't connected yet"
+    else honeypot filled
+        R-->>P: 200 (nothing stored)
+    else
+        R->>D: rpc submit_enquiry(secret, …, ip_hash)
+        D-->>R: saved / invalid field / rate limited
+        R-->>P: 200 / 400 / 429 / 502
     end
+    P->>V: success state, or the error message (+ mailto link if email is set)
 ```
 
 - One native `<dialog>` for the whole site (`Booking.tsx`). It closes on ✕, Escape or a backdrop click.
-- The **topic** is the button's own label (for example "Test Our Parser on 5 Sample BoLs"), so each lead arrives tagged with where it came from. The page path is sent too.
-- Validation: both fields required; contact needs at least 5 characters.
-- The key is `NEXT_PUBLIC_*`, so it's embedded in client JS. That's normal for Web3Forms access keys, which are designed to be public.
+- **Three required fields:** Name / Firm, Email, Phone / WhatsApp.
+- The **topic** is the button's own label (for example "Test Our Parser on 5 Sample BoLs"), so each enquiry arrives tagged with where it came from. The page path, the referrer and any `utm_*` parameters are sent too.
+- **Where it goes:** the enquiry is saved in the LambTech desk database and appears in the desk (https://lambtechdb.vercel.app) under **Enquiries**. Staff confirm it there to create a lead.
+- **Abuse controls:** a hidden honeypot field; validation in `lib/enquiry.ts` and again in the database; at most 5 enquiries an hour per visitor address; a double submit stores one row.
+- **Secrets:** the route presents `ENQUIRY_INTAKE_SECRET`, which exists only on the server. The database function refuses any caller without it, so the public Supabase key alone can do nothing. The visitor's address is stored only as a salted hash.
+- Database side (function, table, rules): `docs/superpowers/specs/2026-11-13-lambtech-enquiries-design.md` in `Xenomorph27/Lambtech_DB`.
 
 ---
 
@@ -517,6 +531,7 @@ flowchart LR
 |---|---|
 | `npm run dev` | Dev server on http://localhost:3000 (Turbopack). If styles look stale after editing `globals.css`, hard-refresh. |
 | `npm run lint` | ESLint (vendored React Bits excluded). |
+| `npm test` | Unit tests for `lib/enquiry.ts` (Node's built-in runner). |
 | `npm run build` | Production build; also type-checks and prerenders all routes. |
 | `npm start` | Serve the production build locally. |
 
@@ -528,7 +543,10 @@ flowchart LR
 
 | Setting | Where | Notes |
 |---|---|---|
-| `NEXT_PUBLIC_WEB3FORMS_KEY` | `.env.local` locally; **Vercel → Project → Settings → Environment Variables** in production | Needed for the booking form to send. Redeploy after adding. |
+| `SUPABASE_URL` | `.env.local` locally; **Vercel → Project → Settings → Environment Variables** in production | The desk database's address. Server-only. |
+| `SUPABASE_PUBLISHABLE_KEY` | same | Supabase's public key. Server-only here. |
+| `ENQUIRY_INTAKE_SECRET` | same | Made by `scripts/new-intake-secret.ps1` in the desk repo; only its hash is in the database. Never `NEXT_PUBLIC`. Redeploy after changing. |
+| `NEXT_PUBLIC_WEB3FORMS_KEY` | same | Optional. If set, each saved enquiry is also emailed through Web3Forms. |
 | Contact details | `lib/site.ts` | Empty fields are hidden from the footer and modal. |
 | Next.js options | `next.config.ts` | `cacheComponents`, `partialPrefetching`, Turbopack Tailwind loader. |
 | Lint scope | `eslint.config.mjs` | Ignores `.next`, `out`, `build`, `next-env.d.ts`, `components/reactbits/**`. |
@@ -542,7 +560,7 @@ flowchart LR
 | Change copy on a vertical | Edit the `content` object in `app/<vertical>/page.tsx`. |
 | Change hub copy or sections | `app/page.tsx` (constants at the top, sections in JSX). |
 | Fill in contact details | `lib/site.ts` (`email`, `xHandle`, `linkedin`, `whatsapp`). |
-| Connect the booking form | Create a Web3Forms access key → set `NEXT_PUBLIC_WEB3FORMS_KEY` in Vercel → redeploy. |
+| Connect the booking form | Follow "Website enquiries" in the desk repo's `DEPLOY.md`: run the secret script, register its hash, set the three variables in Vercel, redeploy. |
 | Add a new vertical | 1) Add an entry to `verticals` in `lib/site.ts`. 2) Create `app/<slug>/page.tsx` exporting `metadata` and a `VerticalContent`. 3) Build a widget in `components/widgets/`. Nav, footer and hub cards pick it up automatically (the hub grid is 3 columns, so adjust it for a 4th card). |
 | Change the background split or colours | `globals.css`: `--edge`, `--color-tone`, `--rule`, `--rule-soft`. |
 | Change the accent colour | Indigo is used as Tailwind classes (`indigo-*`) across components; search and replace, and update `--color-accent`. |
@@ -556,11 +574,12 @@ flowchart LR
 
 | Item | Status |
 |---|---|
-| Booking form | Shows "not connected" until `NEXT_PUBLIC_WEB3FORMS_KEY` is set in Vercel. |
+| Booking form | Saves to the desk database once the three variables are set in Vercel; shows "not connected" until then. |
+| Enquiry notifications | Nobody is emailed when an enquiry arrives; staff watch the desk's Overview. |
 | Contact details | Blank in `lib/site.ts`; footer shows only "Mumbai, India". |
 | Custom domain | `lambtech.in` still points at the previous site; not attached to the Vercel project. |
 | Back-button scroll | Back/Forward keeps the current scroll position rather than restoring the earlier page's position. |
 | SEO extras | No sitemap, robots file, Open Graph image or structured data yet. |
 | Copy review | FAQ answers, deliverables, "Today/After" lines and calculator assumptions were written from the master plan and need a business review. |
 | `README.md` | Still the default create-next-app README. |
-| Tests | No automated tests; the widget logic (`lib/checks.ts`, TDS split, batch counts) is a good first candidate. |
+| Tests | `lib/enquiry.ts` is covered (`npm test`); the widget logic (`lib/checks.ts`, TDS split, batch counts) is the next candidate. |

@@ -27,9 +27,9 @@ Each vertical page: hero → widget → 3-step flow → manual vs automated tabl
 
 ## Shared
 - Sticky nav, footer, global 2-field booking modal (Name/Firm, Email/WhatsApp).
-- Modal posts to Web3Forms using `NEXT_PUBLIC_WEB3FORMS_KEY` (see `.env.example`).
+- Modal posts to `/api/enquiry`, which saves to the LambTech desk database (see `architecture.md` §11).
 - Contact details live in `lib/site.ts`.
 
 ## Open items
 - Contact email / X handle / LinkedIn (blank in `lib/site.ts` until provided).
-- Web3Forms access key.
+- Supabase and intake-secret variables (see `.env.example`).
