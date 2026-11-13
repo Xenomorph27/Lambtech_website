@@ -38,33 +38,35 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
-
-    if (!site.formKey) {
-      setStatus("error");
-      setError(
-        "The booking form isn't connected yet (missing Web3Forms key).",
-      );
-      return;
+    const search = new URLSearchParams(window.location.search);
+    const meta: Record<string, string> = {};
+    if (document.referrer) meta.referrer = document.referrer;
+    for (const [key, value] of search) {
+      if (key.startsWith("utm_")) meta[key] = value;
     }
+    const enquiry = {
+      name: data.get("name"),
+      email: data.get("email"),
+      phone: data.get("phone"),
+      website: data.get("website"),
+      topic,
+      page: window.location.pathname,
+      meta,
+    };
 
     setStatus("sending");
     try {
-      const res = await fetch("https://api.web3forms.com/submit", {
+      const res = await fetch("/api/enquiry", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          access_key: site.formKey,
-          subject: `LambTech enquiry: ${topic}`,
-          from_name: "lambtech.in",
-          name_or_firm: data.get("name"),
-          email_or_whatsapp: data.get("contact"),
-          topic,
-          page: window.location.pathname,
-        }),
+        body: JSON.stringify(enquiry),
       });
-      const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.success) throw new Error(json?.message);
+      const json: { ok?: boolean; error?: string } | null = await res
+        .json()
+        .catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error);
       setStatus("sent");
+      notifyByEmail(enquiry);
     } catch (err) {
       setStatus("error");
       setError(
@@ -73,6 +75,25 @@ export function BookingProvider({ children }: { children: ReactNode }) {
           : "Something went wrong sending your details. Please try again.",
       );
     }
+  }
+
+  /** Optional extra: email the enquiry through Web3Forms. Never blocks or fails the form. */
+  function notifyByEmail(enquiry: { name: unknown; email: unknown; phone: unknown; page: string }) {
+    if (!site.formKey) return;
+    void fetch("https://api.web3forms.com/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        access_key: site.formKey,
+        subject: `LambTech enquiry: ${topic}`,
+        from_name: "lambtech.in",
+        name_or_firm: enquiry.name,
+        email: enquiry.email,
+        phone: enquiry.phone,
+        topic,
+        page: enquiry.page,
+      }),
+    }).catch(() => {});
   }
 
   const field =
@@ -93,7 +114,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="font-mono text-xs uppercase tracking-wider text-indigo-600">
-                2 fields · 30 seconds
+                3 fields · 30 seconds
               </p>
               <h2 id="booking-title" className="mt-1.5 text-xl font-bold">
                 {topic}
@@ -120,7 +141,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
               </div>
               <p className="mt-4 font-semibold">Got it. We&apos;ll be in touch shortly.</p>
               <p className="mt-1 text-sm text-slate-600">
-                Expect a reply on the email or WhatsApp number you shared.
+                Expect a reply by email or on WhatsApp.
               </p>
               <button
                 type="button"
@@ -137,21 +158,44 @@ export function BookingProvider({ children }: { children: ReactNode }) {
                 <input
                   name="name"
                   required
+                  maxLength={200}
                   autoComplete="organization"
                   placeholder="Priya, Sharma & Co."
                   className={field}
                 />
               </label>
               <label className="block text-sm font-medium">
-                Email or WhatsApp
+                Email
                 <input
-                  name="contact"
+                  name="email"
+                  type="email"
                   required
-                  minLength={5}
-                  placeholder="you@firm.in or +91 98765 43210"
+                  maxLength={254}
+                  autoComplete="email"
+                  placeholder="you@firm.in"
                   className={field}
                 />
               </label>
+              <label className="block text-sm font-medium">
+                Phone / WhatsApp
+                <input
+                  name="phone"
+                  type="tel"
+                  required
+                  minLength={7}
+                  maxLength={30}
+                  autoComplete="tel"
+                  placeholder="+91 98765 43210"
+                  className={field}
+                />
+              </label>
+              {/* Honeypot: off-screen and skipped by keyboard and screen readers; bots fill it. */}
+              <div aria-hidden className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+                <label>
+                  Website
+                  <input name="website" tabIndex={-1} autoComplete="off" />
+                </label>
+              </div>
 
               {status === "error" && (
                 <p role="alert" className="rounded-lg bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700">
