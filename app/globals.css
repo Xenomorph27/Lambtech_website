@@ -1,0 +1,233 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --color-ink: #0f172a;
+  --color-accent: #6366f1;
+  --color-accent-strong: #4f46e5;
+  --color-tone: #c3ccfb;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+/* Dual-tone page: about 62% white, 38% lavender, split on a slight diagonal
+   and fixed to the viewport so every section sits on the same two colours. */
+body {
+  /* Two rules: a deep-black one on the colour boundary, and a thick light-grey band just inside the white. */
+  --edge: 62%;
+  --rule: #050505;
+  --rule-soft: #d1d5db;
+  background: linear-gradient(
+      104deg,
+      #ffffff 0,
+      #ffffff calc(var(--edge) - 50.5px),
+      var(--rule-soft) calc(var(--edge) - 50px),
+      var(--rule-soft) calc(var(--edge) - 14px),
+      #ffffff calc(var(--edge) - 13.5px),
+      #ffffff calc(var(--edge) - 2px),
+      var(--rule) calc(var(--edge) - 1.5px),
+      var(--rule) calc(var(--edge) + 1.5px),
+      var(--color-tone) calc(var(--edge) + 2px),
+      var(--color-tone) 100%
+    )
+    fixed;
+  color: #0f172a;
+}
+
+::selection {
+  background: #6366f1;
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------- Blur-in headline (per word) ---------- */
+@keyframes blur-in {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(0.35em);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+.blur-word {
+  display: inline-block;
+  opacity: 0;
+  animation: blur-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
+/* ---------- Scroll reveal ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- Section textures ---------- */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgb(15 23 42 / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(15 23 42 / 0.05) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+.bg-grid-dark {
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+.hero-fade {
+  mask-image: radial-gradient(ellipse 85% 80% at 50% 20%, #000 35%, transparent 80%);
+}
+
+/* ---------- Red / green attention marks ---------- */
+@keyframes mark-in {
+  from {
+    background-size: 0% 100%;
+  }
+}
+.hl-green,
+.hl-red {
+  padding: 0 0.2em;
+  border-radius: 0.2em;
+  font-weight: 700;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  animation: mark-in 0.9s 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.hl-green {
+  color: #065f46;
+  background-image: linear-gradient(#a7f3d0, #a7f3d0);
+}
+.hl-red {
+  color: #9f1239;
+  background-image: linear-gradient(#fecdd3, #fecdd3);
+}
+
+/* ---------- Document card ---------- */
+@keyframes scan {
+  0%,
+  100% {
+    top: 4%;
+    opacity: 0;
+  }
+  8%,
+  92% {
+    opacity: 1;
+  }
+  50% {
+    top: 94%;
+  }
+}
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6366f1, transparent);
+  box-shadow: 0 0 18px 4px rgb(99 102 241 / 0.35);
+  animation: scan 4.5s ease-in-out infinite;
+}
+@keyframes float {
+  50% {
+    transform: translateY(-7px);
+  }
+}
+.float-a {
+  animation: float 5s ease-in-out infinite;
+}
+.float-b {
+  animation: float 6s ease-in-out -2s infinite;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.pop-in {
+  animation: pop-in 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes pulse-dot {
+  50% {
+    opacity: 0.35;
+  }
+}
+.pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+/* ---------- Booking dialog ---------- */
+dialog.booking {
+  margin: auto;
+}
+dialog.booking::backdrop {
+  background: rgb(15 23 42 / 0.55);
+  backdrop-filter: blur(4px);
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+dialog.booking[open] {
+  animation: dialog-in 0.25s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes log-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.log-row {
+  animation: log-in 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-line {
+    display: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+  .blur-word,
+  .reveal,
+  .log-row,
+  .pop-in,
+  .hl-green,
+  .hl-red,
+  .float-a,
+  .float-b,
+  .pulse-dot,
+  dialog.booking[open] {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+
