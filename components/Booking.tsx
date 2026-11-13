@@ -48,7 +48,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       name: data.get("name"),
       email: data.get("email"),
       phone: data.get("phone"),
-      website: data.get("website"),
+      website: data.get("lt_hp_check"),
       topic,
       page: window.location.pathname,
       meta,
@@ -192,8 +192,8 @@ export function BookingProvider({ children }: { children: ReactNode }) {
               {/* Honeypot: off-screen and skipped by keyboard and screen readers; bots fill it. */}
               <div aria-hidden className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
                 <label>
-                  Website
-                  <input name="website" tabIndex={-1} autoComplete="off" />
+                  Leave this empty
+                  <input name="lt_hp_check" tabIndex={-1} autoComplete="off" />
                 </label>
               </div>
 

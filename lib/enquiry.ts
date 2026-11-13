@@ -46,6 +46,7 @@ export const GENERIC =
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const META_KEYS = /^(referrer|utm_[a-z]+)$/;
+const META_MAX_BYTES = 1800; // the database allows 2048
 
 const text = (value: unknown): string =>
   typeof value === "string" ? value.trim() : "";
@@ -69,6 +70,9 @@ function cleanMeta(value: unknown): Record<string, string> {
   for (const [key, raw] of Object.entries(value)) {
     const item = text(raw);
     if (META_KEYS.test(key) && item !== "" && item.length <= 300) {
+      // The database refuses meta over 2 KB, which would lose the whole
+      // enquiry; drop extra values instead.
+      if (new TextEncoder().encode(JSON.stringify({ ...meta, [key]: item })).length > META_MAX_BYTES) break;
       meta[key] = item;
     }
     if (Object.keys(meta).length >= 8) break;

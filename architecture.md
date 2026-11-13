@@ -395,8 +395,9 @@ sequenceDiagram
 - One native `<dialog>` for the whole site (`Booking.tsx`). It closes on ✕, Escape or a backdrop click.
 - **Three required fields:** Name / Firm, Email, Phone / WhatsApp.
 - The **topic** is the button's own label (for example "Test Our Parser on 5 Sample BoLs"), so each enquiry arrives tagged with where it came from. The page path, the referrer and any `utm_*` parameters are sent too.
+- **Tracking details** (`meta`) are trimmed to stay under the database's 2 KB limit, so long UTM values never cost an enquiry.
 - **Where it goes:** the enquiry is saved in the LambTech desk database and appears in the desk (https://lambtechdb.vercel.app) under **Enquiries**. Staff confirm it there to create a lead.
-- **Abuse controls:** a hidden honeypot field; validation in `lib/enquiry.ts` and again in the database; at most 5 enquiries an hour per visitor address; a double submit stores one row.
+- **Abuse controls:** a hidden honeypot field (`lt_hp_check`, named so browsers do not autofill it; sent to the route as `website`); validation in `lib/enquiry.ts` and again in the database; at most 5 enquiries an hour per visitor address; a double submit stores one row.
 - **Secrets:** the route presents `ENQUIRY_INTAKE_SECRET`, which exists only on the server. The database function refuses any caller without it, so the public Supabase key alone can do nothing. The visitor's address is stored only as a salted hash.
 - Database side (function, table, rules): `docs/superpowers/specs/2026-11-13-lambtech-enquiries-design.md` in `Xenomorph27/Lambtech_DB`.
 
