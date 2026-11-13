@@ -5,6 +5,7 @@ import { BookingProvider } from "@/components/Booking";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
 import ClickSpark from "@/components/reactbits/ClickSpark";
+import { ScrollReset } from "@/components/ScrollReset";
 
 const manrope = Manrope({ variable: "--font-manrope", subsets: ["latin"] });
 const jetbrains = JetBrains_Mono({
@@ -27,9 +28,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      // Lets Next.js turn off smooth scrolling while it resets scroll on route
+      // changes, so it stays smooth only for in-page anchor links.
+      data-scroll-behavior="smooth"
       className={`${manrope.variable} ${jetbrains.variable} antialiased`}
     >
       <body className="font-sans">
+        <ScrollReset />
         <BookingProvider>
           <ClickSpark sparkColor="#6366f1" sparkCount={8} sparkRadius={18} className="flex min-h-screen flex-col">
             <Nav />

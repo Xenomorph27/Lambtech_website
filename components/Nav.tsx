@@ -30,6 +30,7 @@ export function Nav() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <Link
           href="/"
+          scroll={false}
           onClick={() => setMenuOpen(false)}
           className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-slate-900"
         >
@@ -46,6 +47,7 @@ export function Nav() {
               <Link
                 key={l.href}
                 href={l.href}
+                scroll={false}
                 aria-current={active ? "page" : undefined}
                 className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors ${
                   active
@@ -93,6 +95,7 @@ export function Nav() {
             <Link
               key={l.href}
               href={l.href}
+              scroll={false}
               onClick={() => setMenuOpen(false)}
               aria-current={pathname === l.href ? "page" : undefined}
               className={`block rounded-lg px-3 py-3 font-semibold ${

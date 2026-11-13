@@ -33,7 +33,7 @@ export function Footer() {
           <ul className="mt-4 space-y-2.5 text-sm">
             {verticals.map((v) => (
               <li key={v.href}>
-                <Link href={v.href} className="hover:text-white">
+                <Link href={v.href} scroll={false} className="hover:text-white">
                   {v.title}
                 </Link>
               </li>

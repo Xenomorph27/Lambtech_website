@@ -218,7 +218,7 @@ export default function Home() {
                 intensity={0.22}
                 className="group h-full !rounded-2xl !p-0 transition-transform duration-300 hover:-translate-y-1"
               >
-                <Link href={v.href} className="flex h-full flex-col p-7">
+                <Link href={v.href} scroll={false} className="flex h-full flex-col p-7">
                   <span className="font-mono text-xs text-slate-500">
                     lambtech.in{v.href}
                   </span>
