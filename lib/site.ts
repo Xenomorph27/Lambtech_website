@@ -10,7 +10,7 @@ export const site = {
   xHandle: "", // e.g. "LambTech" (without the @)
   linkedin: "", // full URL
   whatsapp: "", // digits only with country code, e.g. "919876543210"
-  /** Web3Forms access key. Set NEXT_PUBLIC_WEB3FORMS_KEY in .env.local */
+  /** Optional Web3Forms key: if set, each saved enquiry is also emailed. */
   formKey: process.env.NEXT_PUBLIC_WEB3FORMS_KEY ?? "",
 };
 
